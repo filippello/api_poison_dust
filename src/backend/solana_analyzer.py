@@ -90,9 +90,9 @@ class SolanaAnalyzer:
             self.get_account_transactions(to_address)
         )
         
-        # Procesar todas las direcciones y sus primeros bloques
+        # Process all addresses and their first blocks
         address_first_blocks = {}
-        print("\nProcesando bloques iniciales de todas las direcciones:")
+        print("\nProcessing initial blocks for all addresses:")
         
         # Procesar transferencias de from_address
         for transfer in from_transfers:
@@ -163,7 +163,7 @@ class SolanaAnalyzer:
         similar_addresses = []
         target_prefix = target_address[:prefix_length]
         
-        print(f"\nBuscando coincidencias para dirección {target_address} con prefijo {target_prefix}")
+        print(f"\nLooking for matches for address {target_address} with prefix {target_prefix}")
         
         # Primero encontramos todas las direcciones con el mismo prefijo
         for address in addresses:
@@ -172,39 +172,63 @@ class SolanaAnalyzer:
             
         is_risky = len(similar_addresses) > 1
         risk_level = 0
-        message = "No se detectaron riesgos"
+        message = "No risks detected"
         original_address = None
         
         if is_risky:
-            print("\nAnalizando bloques para direcciones similares:")
+            print("\nAnalyzing blocks for similar addresses:")
             for addr in similar_addresses:
                 if addr in address_first_blocks:
                     info = address_first_blocks[addr]
-                    print(f"\nDirección: {addr}")
-                    print(f"Número de bloque: {info['block_id']}")
-                    print(f"Tiempo de bloque: {info['block_time']}")
-                    print(f"Detalles de la transferencia:")
+                    print(f"\nAddress: {addr}")
+                    print(f"Block number: {info['block_id']}")
+                    print(f"Block time: {info['block_time']}")
+                    print(f"Transfer details:")
                     print(json.dumps(info['transfer'], indent=2))
             
-            # Encontramos la dirección original (la que apareció primero)
             block_times = {addr: address_first_blocks[addr]['block_id'] 
                           for addr in similar_addresses 
                           if addr in address_first_blocks}
             
             if block_times:
                 original_address = min(block_times.items(), key=lambda x: x[1])[0]
-                print(f"\nDirección original identificada: {original_address}")
-                print(f"Número de bloque más antiguo: {block_times[original_address]}")
+                print(f"\nOriginal address identified: {original_address}")
+                print(f"Oldest block number: {block_times[original_address]}")
                 
-                # Si la dirección objetivo no es la original, es riesgosa
                 if target_address != original_address:
                     risk_level = min(len(similar_addresses) * 20, 100)
-                    message = f"Dirección sospechosa: similar a {original_address} (dirección original)"
-                    print(f"¡Alerta! La dirección objetivo es posterior a la original")
+                    message = f"Suspicious address: similar to {original_address} (original address)"
+                    print(f"Alert! Target address is newer than the original")
+                    
+                    # Chequeo adicional de valor de transacción
+                    original_info = address_first_blocks[original_address]
+                    target_info = address_first_blocks[target_address]
+                    
+                    print("\nAnalyzing transaction values:")
+                    print(f"Original transfer: {json.dumps(original_info['transfer'], indent=2)}")
+                    print(f"Target transfer: {json.dumps(target_info['transfer'], indent=2)}")
+                    
+                    # SOL token check
+                    if target_info['transfer']['token_address'] == "So11111111111111111111111111111111111111111":
+                        target_value = float(target_info['transfer'].get('value', 0))
+                        print(f"SOL transaction value: {target_value}")
+                        if target_value < 0.001:
+                            risk_level = 90
+                            message += " - Low value SOL transaction"
+                            print("Alert! Low value SOL transaction detected")
+                    # Other tokens check
+                    elif original_info['transfer']['token_address'] == target_info['transfer']['token_address']:
+                        original_value = float(original_info['transfer'].get('value', 0))
+                        target_value = float(target_info['transfer'].get('value', 0))
+                        print(f"Comparing values - Original: {original_value}, Target: {target_value}")
+                        if target_value * 5 < original_value:
+                            risk_level = 90
+                            message += f" - Significantly lower transaction value (Original: {original_value}, Current: {target_value})"
+                            print(f"Alert! Significantly lower transaction value detected")
                 else:
                     is_risky = False
-                    message = "Dirección original detectada"
-                    print("La dirección objetivo es la original")
+                    message = "Original address detected"
+                    print("Target address is the original one")
         
         return {
             "has_similar_addresses": is_risky,
@@ -218,19 +242,19 @@ class SolanaAnalyzer:
 
     async def get_first_block(self, address: str) -> int:
         transfers = await self.get_account_transfers(address)
-        print(f"\nAnalizando primeras transferencias para {address}:")
-        print(f"Total de transferencias encontradas: {len(transfers)}")
+        print(f"\nAnalizing first transfers for {address}:")
+        print(f"Total of transfers found: {len(transfers)}")
         
         if not transfers:
-            print("No se encontraron transferencias")
+            print("No transfers found")
             return float('inf')
         
         # Ordenamos por block_time ascendente y tomamos el primero
         sorted_transfers = sorted(transfers, key=lambda x: x.get('block_time', float('inf')))
         first_block = sorted_transfers[0].get('block_time', float('inf'))
         
-        print(f"Primera transferencia encontrada en bloque: {first_block}")
-        print(f"Detalles de la primera transferencia: {sorted_transfers[0]}")
+        print(f"First transfer found in block: {first_block}")
+        print(f"Details of the first transfer: {sorted_transfers[0]}")
         
         return first_block
 
@@ -244,11 +268,12 @@ async def check_addresses(request: AddressRequest):
         )
         return {
             "is_risky": analysis_result["risk_assessment"]["has_similar_addresses"],
+            "risk_level": analysis_result["risk_assessment"]["risk_level"],
             "details": analysis_result["details"],
             "similar_addresses": analysis_result["risk_assessment"]["similar_addresses"]
         }
     except Exception as e:
         return {
-            "error": f"Error durante el análisis: {str(e)}",
+            "error": f"Error during analysis: {str(e)}",
             "traceback": traceback.format_exc()
         } 
