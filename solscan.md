@@ -84,12 +84,15 @@ wallet to check (to_address_check)
 
 
 5CNkgg51xbb7kBkkLXXuLyBQcrJPpL2FU13xyY2qiQmY scam
+
 5CNkk2gQKT42qeVVZo69PMoLw2XKG8xsVebBDKGo3DpY  Safe one
+
 5CNkMChs6E3YgAt5riRAfJTChxesVgYwbkhPwpnsznxY scam
 
 or
 
 4yfu48qwim7hGzD3Nphzd2A6ThydzysfKi4wBPFSgnhY Safe one
+
 4yfuQCL4fnNfSbBgqFcPTFn5GGZABDaEFQLhGpwjizcY scam
 
 example:
