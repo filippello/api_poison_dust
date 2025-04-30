@@ -46,7 +46,7 @@ This data enables us to evaluate whether the recipient address is suspicious, an
 ### **Architecture**
 
 
-![e8269e9143c6a5c456156a116c0f7e0c.png](./e8269e9143c6a5c456156a116c0f7e0c.png)
+<img width="485" alt="Image" src="https://github.com/user-attachments/assets/a21e303e-8b24-4e5c-90b0-9e93f7f6b8e5" />
 
 
 ### **Challenges & Solutions**
